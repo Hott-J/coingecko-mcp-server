@@ -1,0 +1,29 @@
+{
+  "name": "@modelcontextprotocol/server-coingecko",
+  "version": "0.1.0",
+  "description": "MCP server for using the CoinGecko API",
+  "license": "MIT",
+  "author": "Your Name",
+  "homepage": "https://modelcontextprotocol.io",
+  "type": "module",
+  "bin": {
+    "mcp-server-coingecko": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.0.1",
+    "@types/node-fetch": "^2.6.12",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "shx": "^0.3.4",
+    "typescript": "^5.6.2"
+  }
+}
