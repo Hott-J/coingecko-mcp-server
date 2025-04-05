@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { TcpServerTransport } from "@modelcontextprotocol/sdk/server/tcp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -368,7 +368,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: COINGECKO_TOOLS,
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
   try {
     const requestParams = request.params.arguments as any;
     switch (request.params.name) {
@@ -407,9 +407,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  const transport = new StdioServerTransport();
+  const transport = new TcpServerTransport({ port: 3000 });
   await server.connect(transport);
-  console.error("CoinGecko MCP Server running on stdio");
+  console.error("CoinGecko MCP Server running on TCP port 3000");
 }
 
 runServer().catch((error) => {
