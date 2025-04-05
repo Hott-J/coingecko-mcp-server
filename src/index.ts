@@ -169,7 +169,7 @@ async function handleSimplePrice(
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error: string };
       return {
         content: [{
           type: "text",
@@ -206,7 +206,7 @@ async function handleCoinList(include_platform = false) {
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error: string };
       return {
         content: [{
           type: "text",
@@ -248,7 +248,7 @@ async function handleCoinData(id: string, vs_currencies: string[] = ["usd"]) {
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error: string };
       return {
         content: [{
           type: "text",
@@ -320,7 +320,7 @@ async function handleTrendingCoins() {
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error: string };
       return {
         content: [{
           type: "text",
@@ -370,21 +370,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
+    const requestParams = request.params.arguments as any;
     switch (request.params.name) {
       case "coingecko_price":
         return await handleSimplePrice(
-          request.params.arguments.ids,
-          request.params.arguments.vs_currencies,
-          request.params.arguments.include_market_cap,
-          request.params.arguments.include_24hr_vol,
-          request.params.arguments.include_24hr_change
+          requestParams.ids,
+          requestParams.vs_currencies,
+          requestParams.include_market_cap,
+          requestParams.include_24hr_vol,
+          requestParams.include_24hr_change
         );
       case "coingecko_list":
-        return await handleCoinList(request.params.arguments.include_platform);
+        return await handleCoinList(requestParams.include_platform);
       case "coingecko_coin_data":
         return await handleCoinData(
-          request.params.arguments.id,
-          request.params.arguments.vs_currencies
+          requestParams.id,
+          requestParams.vs_currencies
         );
       case "coingecko_trending":
         return await handleTrendingCoins();
