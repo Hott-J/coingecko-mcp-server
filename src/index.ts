@@ -9,25 +9,18 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import fetch from "node-fetch";
 
-// Response interfaces
-interface CoinGeckoResponse {
-  success?: boolean;
-  error?: string;
-}
+// 타입 정의
+type SuccessfulSimplePrice = { [coinId: string]: { [currency: string]: number } };
+type FailedPriceResponse = { error: string; success?: boolean };
+type SimplePrice = SuccessfulSimplePrice | FailedPriceResponse;
 
-interface SimplePrice extends CoinGeckoResponse {
-  [id: string]: {
-    [currency: string]: number;
-  };
-}
-
-interface CoinList extends CoinGeckoResponse {
+type CoinList = {
   id: string;
   symbol: string;
   name: string;
-}[]
+}[];
 
-interface CoinData extends CoinGeckoResponse {
+interface CoinData {
   id: string;
   symbol: string;
   name: string;
@@ -40,21 +33,11 @@ interface CoinData extends CoinGeckoResponse {
     large: string;
   };
   market_data: {
-    current_price: {
-      [currency: string]: number;
-    };
-    market_cap: {
-      [currency: string]: number;
-    };
-    total_volume: {
-      [currency: string]: number;
-    };
-    high_24h: {
-      [currency: string]: number;
-    };
-    low_24h: {
-      [currency: string]: number;
-    };
+    current_price: Record<string, number>;
+    market_cap: Record<string, number>;
+    total_volume: Record<string, number>;
+    high_24h: Record<string, number>;
+    low_24h: Record<string, number>;
     price_change_percentage_24h: number;
     price_change_percentage_7d: number;
     price_change_percentage_30d: number;
@@ -62,7 +45,7 @@ interface CoinData extends CoinGeckoResponse {
   last_updated: string;
 }
 
-interface TrendingCoins extends CoinGeckoResponse {
+interface TrendingCoins {
   coins: {
     item: {
       id: string;
@@ -77,7 +60,7 @@ interface TrendingCoins extends CoinGeckoResponse {
   }[];
 }
 
-// Tool definitions
+// Tool 정의
 const SIMPLE_PRICE_TOOL: Tool = {
   name: "coingecko_price",
   description: "Get current price data for cryptocurrencies",
@@ -166,7 +149,8 @@ const COINGECKO_TOOLS = [
   TRENDING_COINS_TOOL,
 ] as const;
 
-// API handlers
+// API 핸들러
+
 async function handleSimplePrice(
   ids: string[],
   vs_currencies: string[],
@@ -178,19 +162,12 @@ async function handleSimplePrice(
     const url = new URL("https://api.coingecko.com/api/v3/simple/price");
     url.searchParams.append("ids", ids.join(","));
     url.searchParams.append("vs_currencies", vs_currencies.join(","));
-    
-    if (include_market_cap) {
-      url.searchParams.append("include_market_cap", "true");
-    }
-    if (include_24hr_vol) {
-      url.searchParams.append("include_24hr_vol", "true");
-    }
-    if (include_24hr_change) {
-      url.searchParams.append("include_24hr_change", "true");
-    }
+    if (include_market_cap) url.searchParams.append("include_market_cap", "true");
+    if (include_24hr_vol) url.searchParams.append("include_24hr_vol", "true");
+    if (include_24hr_change) url.searchParams.append("include_24hr_change", "true");
 
     const response = await fetch(url.toString());
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       return {
@@ -201,9 +178,8 @@ async function handleSimplePrice(
         isError: true
       };
     }
-    
-    const data = await response.json() as SimplePrice;
 
+    const data = await response.json() as SimplePrice;
     return {
       content: [{
         type: "text",
@@ -225,12 +201,10 @@ async function handleSimplePrice(
 async function handleCoinList(include_platform = false) {
   try {
     const url = new URL("https://api.coingecko.com/api/v3/coins/list");
-    if (include_platform) {
-      url.searchParams.append("include_platform", "true");
-    }
+    if (include_platform) url.searchParams.append("include_platform", "true");
 
     const response = await fetch(url.toString());
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       return {
@@ -241,9 +215,8 @@ async function handleCoinList(include_platform = false) {
         isError: true
       };
     }
-    
-    const data = await response.json() as CoinList;
 
+    const data = await response.json() as CoinList;
     return {
       content: [{
         type: "text",
@@ -273,7 +246,7 @@ async function handleCoinData(id: string, vs_currencies: string[] = ["usd"]) {
     url.searchParams.append("sparkline", "false");
 
     const response = await fetch(url.toString());
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       return {
@@ -284,10 +257,15 @@ async function handleCoinData(id: string, vs_currencies: string[] = ["usd"]) {
         isError: true
       };
     }
-    
+
     const data = await response.json() as CoinData;
 
-    // Filter for requested currencies
+    const price = data.market_data.current_price;
+    const marketCap = data.market_data.market_cap;
+    const volume = data.market_data.total_volume;
+    const high = data.market_data.high_24h;
+    const low = data.market_data.low_24h;
+
     const filteredData = {
       id: data.id,
       symbol: data.symbol,
@@ -295,11 +273,11 @@ async function handleCoinData(id: string, vs_currencies: string[] = ["usd"]) {
       description: data.description.en,
       image: data.image,
       market_data: {
-        current_price: {},
-        market_cap: {},
-        total_volume: {},
-        high_24h: {},
-        low_24h: {},
+        current_price: {} as Record<string, number>,
+        market_cap: {} as Record<string, number>,
+        total_volume: {} as Record<string, number>,
+        high_24h: {} as Record<string, number>,
+        low_24h: {} as Record<string, number>,
         price_change_percentage_24h: data.market_data.price_change_percentage_24h,
         price_change_percentage_7d: data.market_data.price_change_percentage_7d,
         price_change_percentage_30d: data.market_data.price_change_percentage_30d
@@ -307,14 +285,13 @@ async function handleCoinData(id: string, vs_currencies: string[] = ["usd"]) {
       last_updated: data.last_updated
     };
 
-    // Only include requested currencies
     for (const currency of vs_currencies) {
-      if (data.market_data.current_price[currency]) {
-        filteredData.market_data.current_price[currency] = data.market_data.current_price[currency];
-        filteredData.market_data.market_cap[currency] = data.market_data.market_cap[currency];
-        filteredData.market_data.total_volume[currency] = data.market_data.total_volume[currency];
-        filteredData.market_data.high_24h[currency] = data.market_data.high_24h[currency];
-        filteredData.market_data.low_24h[currency] = data.market_data.low_24h[currency];
+      if (price[currency]) {
+        filteredData.market_data.current_price[currency] = price[currency];
+        filteredData.market_data.market_cap[currency] = marketCap[currency];
+        filteredData.market_data.total_volume[currency] = volume[currency];
+        filteredData.market_data.high_24h[currency] = high[currency];
+        filteredData.market_data.low_24h[currency] = low[currency];
       }
     }
 
@@ -341,7 +318,7 @@ async function handleTrendingCoins() {
     const url = new URL("https://api.coingecko.com/api/v3/search/trending");
 
     const response = await fetch(url.toString());
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       return {
@@ -352,7 +329,7 @@ async function handleTrendingCoins() {
         isError: true
       };
     }
-    
+
     const data = await response.json() as TrendingCoins;
 
     return {
@@ -373,7 +350,7 @@ async function handleTrendingCoins() {
   }
 }
 
-// Server setup
+// MCP Server 설정
 const server = new Server(
   {
     name: "mcp-server/coingecko",
@@ -386,7 +363,7 @@ const server = new Server(
   },
 );
 
-// Set up request handlers
+// 툴 요청 핸들러
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: COINGECKO_TOOLS,
 }));
@@ -394,49 +371,26 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (request.params.name) {
-      case "coingecko_price": {
-        const { ids, vs_currencies, include_market_cap, include_24hr_vol, include_24hr_change } = 
-          request.params.arguments as {
-            ids: string[];
-            vs_currencies: string[];
-            include_market_cap?: boolean;
-            include_24hr_vol?: boolean;
-            include_24hr_change?: boolean;
-          };
+      case "coingecko_price":
         return await handleSimplePrice(
-          ids, 
-          vs_currencies, 
-          include_market_cap, 
-          include_24hr_vol, 
-          include_24hr_change
+          request.params.arguments.ids,
+          request.params.arguments.vs_currencies,
+          request.params.arguments.include_market_cap,
+          request.params.arguments.include_24hr_vol,
+          request.params.arguments.include_24hr_change
         );
-      }
-
-      case "coingecko_list": {
-        const { include_platform } = request.params.arguments as {
-          include_platform?: boolean;
-        };
-        return await handleCoinList(include_platform);
-      }
-
-      case "coingecko_coin_data": {
-        const { id, vs_currencies } = request.params.arguments as {
-          id: string;
-          vs_currencies?: string[];
-        };
-        return await handleCoinData(id, vs_currencies);
-      }
-
-      case "coingecko_trending": {
+      case "coingecko_list":
+        return await handleCoinList(request.params.arguments.include_platform);
+      case "coingecko_coin_data":
+        return await handleCoinData(
+          request.params.arguments.id,
+          request.params.arguments.vs_currencies
+        );
+      case "coingecko_trending":
         return await handleTrendingCoins();
-      }
-
       default:
         return {
-          content: [{
-            type: "text",
-            text: `Unknown tool: ${request.params.name}`
-          }],
+          content: [{ type: "text", text: `Unknown tool: ${request.params.name}` }],
           isError: true
         };
     }
