@@ -1,4 +1,4 @@
-ROM node:22.12-alpine AS builder
+FROM node:22.12-alpine AS builder
 
 # Copy source code
 COPY src/coingecko /app
